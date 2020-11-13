@@ -248,7 +248,12 @@ class LiveQueryClient extends EventEmitter {
    * to the LiveQuery server.
    *
    */
-  open() {
+  open(env = process.env.PARSE_BUILD) {
+    if(env === 'node')
+      CoreManager.setWebSocketController(require('ws'));
+    if(env === 'browser')
+      CoreManager.setWebSocketController(typeof WebSocket === 'function' || typeof WebSocket === 'object' ? WebSocket : null);
+
     const WebSocketImplementation = CoreManager.getWebSocketController();
     if (!WebSocketImplementation) {
       this.emit(CLIENT_EMMITER_TYPES.ERROR, 'Can not find WebSocket implementation');
