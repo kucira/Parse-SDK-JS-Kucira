@@ -395,7 +395,7 @@ class ParseObject {
     for (attr in pending) {
       if (pending[attr] instanceof RelationOp) {
         changes[attr] = pending[attr].applyTo(undefined, this, attr);
-      } else if (!(attr in response)) {
+      } else if (!(attr in response) && !attr.includes('.')) {
         // Only SetOps and UnsetOps should not come back with results
         changes[attr] = pending[attr].applyTo(undefined);
       }
@@ -407,7 +407,12 @@ class ParseObject {
       } else if (attr === 'ACL') {
         changes[attr] = new ParseACL(response[attr]);
       } else if (attr !== 'objectId') {
-        changes[attr] = decode(response[attr]);
+        const val = decode(response[attr]);
+        if (val && Object.getPrototypeOf(val) === Object.prototype) {
+          changes[attr] = { ...this.attributes[attr], ...val };
+        } else {
+          changes[attr] = val;
+        }
         if (changes[attr] instanceof UnsetOp) {
           changes[attr] = undefined;
         }
@@ -2178,7 +2183,7 @@ const DefaultController = {
         }
         return Promise.resolve(results);
       });
-    } else {
+    } else if (target instanceof ParseObject) {
       if (!target.id) {
         return Promise.reject(new ParseError(
           ParseError.MISSING_OBJECT_ID,
@@ -2196,15 +2201,14 @@ const DefaultController = {
         params,
         options
       ).then(async (response) => {
-        if (target instanceof ParseObject) {
-          target._clearPendingOps();
-          target._clearServerData();
-          target._finishFetch(response);
-        }
+        target._clearPendingOps();
+        target._clearServerData();
+        target._finishFetch(response);
         await localDatastore._updateObjectIfPinned(target);
         return target;
       });
     }
+    return Promise.resolve();
   },
 
   async destroy(target: ParseObject | Array<ParseObject>, options: RequestOptions): Promise<Array<void> | ParseObject> {
@@ -2278,7 +2282,6 @@ const DefaultController = {
         return Promise.resolve(target);
       });
     }
-    await localDatastore._destroyObjectIfPinned(target);
     return Promise.resolve(target);
   },
 
