@@ -22,7 +22,7 @@ const CLIENT_STATE = {
   CONNECTED: 'connected',
   CLOSED: 'closed',
   RECONNECTING: 'reconnecting',
-  DISCONNECTED: 'disconnected'
+  DISCONNECTED: 'disconnected',
 };
 
 // The event type the LiveQuery client should sent to server
@@ -30,7 +30,7 @@ const OP_TYPES = {
   CONNECT: 'connect',
   SUBSCRIBE: 'subscribe',
   UNSUBSCRIBE: 'unsubscribe',
-  ERROR: 'error'
+  ERROR: 'error',
 };
 
 // The event we get back from LiveQuery server
@@ -43,14 +43,14 @@ const OP_EVENTS = {
   UPDATE: 'update',
   ENTER: 'enter',
   LEAVE: 'leave',
-  DELETE: 'delete'
+  DELETE: 'delete',
 };
 
 // The event the LiveQuery client should emit
 const CLIENT_EMMITER_TYPES = {
   CLOSE: 'close',
   ERROR: 'error',
-  OPEN: 'open'
+  OPEN: 'open',
 };
 
 // The event the LiveQuery subscription should emit
@@ -62,13 +62,12 @@ const SUBSCRIPTION_EMMITER_TYPES = {
   UPDATE: 'update',
   ENTER: 'enter',
   LEAVE: 'leave',
-  DELETE: 'delete'
+  DELETE: 'delete',
 };
 
-
-const generateInterval = (k) => {
-  return Math.random() * Math.min(30, (Math.pow(2, k) - 1)) * 1000;
-}
+const generateInterval = k => {
+  return Math.random() * Math.min(30, Math.pow(2, k) - 1) * 1000;
+};
 
 /**
  * Creates a new LiveQueryClient.
@@ -150,7 +149,9 @@ class LiveQueryClient extends EventEmitter {
     super();
 
     if (!serverURL || serverURL.indexOf('ws') !== 0) {
-      throw new Error('You need to set a proper Parse LiveQuery server url before using LiveQueryClient');
+      throw new Error(
+        'You need to set a proper Parse LiveQuery server url before using LiveQueryClient'
+      );
     }
 
     this.reconnectHandle = null;
@@ -159,10 +160,10 @@ class LiveQueryClient extends EventEmitter {
     this.requestId = 1;
     this.serverURL = serverURL;
     this.applicationId = applicationId;
-    this.javascriptKey = javascriptKey;
-    this.masterKey = masterKey;
+    this.javascriptKey = javascriptKey || undefined;
+    this.masterKey = masterKey || undefined;
     this.sessionToken = sessionToken || undefined;
-    this.installationId = installationId;
+    this.installationId = installationId || undefined;
     this.additionalProperties = true;
     this.connectPromise = resolvingPromise();
     this.subscriptions = new Map();
@@ -205,8 +206,8 @@ class LiveQueryClient extends EventEmitter {
       query: {
         className,
         where,
-        fields
-      }
+        fields,
+      },
     };
 
     if (sessionToken) {
@@ -236,8 +237,8 @@ class LiveQueryClient extends EventEmitter {
     this.subscriptions.delete(subscription.id);
     const unsubscribeRequest = {
       op: OP_TYPES.UNSUBSCRIBE,
-      requestId: subscription.id
-    }
+      requestId: subscription.id,
+    };
     this.connectPromise.then(() => {
       this.socket.send(JSON.stringify(unsubscribeRequest));
     });
@@ -271,7 +272,7 @@ class LiveQueryClient extends EventEmitter {
       this._handleWebSocketOpen();
     };
 
-    this.socket.onmessage = (event) => {
+    this.socket.onmessage = event => {
       this._handleWebSocketMessage(event);
     };
 
@@ -279,7 +280,7 @@ class LiveQueryClient extends EventEmitter {
       this._handleWebSocketClose();
     };
 
-    this.socket.onerror = (error) => {
+    this.socket.onerror = error => {
       this._handleWebSocketError(error);
     };
   }
@@ -298,8 +299,8 @@ class LiveQueryClient extends EventEmitter {
         query: {
           className,
           where,
-          fields
-        }
+          fields,
+        },
       };
 
       if (sessionToken) {
@@ -348,7 +349,7 @@ class LiveQueryClient extends EventEmitter {
       applicationId: this.applicationId,
       javascriptKey: this.javascriptKey,
       masterKey: this.masterKey,
-      sessionToken: this.sessionToken
+      sessionToken: this.sessionToken,
     };
     if (this.additionalProperties) {
       connectRequest.installationId = this.installationId;
@@ -363,14 +364,13 @@ class LiveQueryClient extends EventEmitter {
     }
     let subscription = null;
     if (data.requestId) {
-      subscription =
-       this.subscriptions.get(data.requestId);
+      subscription = this.subscriptions.get(data.requestId);
     }
     const response = {
       clientId: data.clientId,
       installationId: data.installationId,
     };
-    switch(data.op) {
+    switch (data.op) {
     case OP_EVENTS.CONNECTED:
       if (this.state === CLIENT_STATE.RECONNECTING) {
         this.resubscribe();
@@ -479,18 +479,23 @@ class LiveQueryClient extends EventEmitter {
       clearTimeout(this.reconnectHandle);
     }
 
-    this.reconnectHandle = setTimeout((() => {
-      this.attempts++;
-      this.connectPromise = resolvingPromise();
-      this.open();
-    }).bind(this), time);
+    this.reconnectHandle = setTimeout(
+      (() => {
+        this.attempts++;
+        this.connectPromise = resolvingPromise();
+        this.open();
+      }).bind(this),
+      time
+    );
   }
 }
 
 if (process.env.PARSE_BUILD === 'node') {
   CoreManager.setWebSocketController(require('ws'));
 } else if (process.env.PARSE_BUILD === 'browser') {
-  CoreManager.setWebSocketController(typeof WebSocket === 'function' || typeof WebSocket === 'object' ? WebSocket : null);
+  CoreManager.setWebSocketController(
+    typeof WebSocket === 'function' || typeof WebSocket === 'object' ? WebSocket : null
+  );
 } else if (process.env.PARSE_BUILD === 'weapp') {
   CoreManager.setWebSocketController(require('./Socket.weapp'));
 } else if (process.env.PARSE_BUILD === 'react-native') {
